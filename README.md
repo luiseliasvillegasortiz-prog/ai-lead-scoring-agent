@@ -1,6 +1,7 @@
 # 🤖 Autonomous AI Lead Scoring & Qualification Agent
 
-![n8n](https://img.shields.io/badge/Orchestrator-n8n-orange) ![AI](https://img.shields.io/badge/AI-Llama3%20%2F%20Groq-blue) ![Self-Healing](https://img.shields.io/badge/Architecture-Self--Healing-green)
+<img width="1727" height="579" alt="image" src="https://github.com/user-attachments/assets/10c5c3a4-b65f-454e-b71a-1d6e2944f946" />
+
 
 A resilient autonomous agent designed to research, analyze, and qualify B2B leads automatically. This system implements a **"Self-Healing"** architecture to handle web scraping failures by falling back to a simulated search strategy, ensuring continuous operation.
 
