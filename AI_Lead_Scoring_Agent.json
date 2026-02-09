@@ -1,0 +1,793 @@
+{
+  "name": "AI_Lead_Scoring_Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -192
+      ],
+      "id": "3ecdbe1f-2cde-496b-a38f-578dd1a3400d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        256,
+        32
+      ],
+      "id": "42aa8b23-3c3d-4c28-b1bc-af0e996943ca",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "2plmDka1RIdDUVF6",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        32
+      ],
+      "id": "8e3fc7ac-4851-4d3b-9b24-ec8502ff82e6",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "2plmDka1RIdDUVF6",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "564964f9-84d9-43be-b37e-4fdb870f7eb8",
+              "name": "name",
+              "value": "Juan Perez",
+              "type": "string"
+            },
+            {
+              "id": "7fc9bfb0-3667-4d99-b407-8b2c42e15df8",
+              "name": "email",
+              "value": "juan@techflow.io",
+              "type": "string"
+            },
+            {
+              "id": "717cb5cb-4a55-477b-80a6-6f11b93c3576",
+              "name": "role",
+              "value": "CTO",
+              "type": "string"
+            },
+            {
+              "id": "3d144bff-2fbe-4aa7-879b-764563d07cf0",
+              "name": "company_url",
+              "value": "https://empresa-fantasma-1234.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -496,
+        -192
+      ],
+      "id": "b7765e24-cde1-4e27-bc6e-e2b89c1a8679",
+      "name": "Mock Lead Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperamos datos\nconst inputData = $input.first().json;\n\n// Leemos variables como texto para evitar errores\nconst email = String(inputData.email || '').toLowerCase().trim();\nconst rawUrl = String(inputData.company_url || '').toLowerCase().trim();\nconst role = inputData.role || 'Unknown';\n\n// Listas\nconst competitors = ['competidor-x.com', 'rival-it.net'];\nconst genericProviders = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com'];\n\n// --- 1. EXTRACCIÓN DE DOMINIO (MÉTODO TEXTO SIMPLE) ---\n\n// Plan B: Dominio del Email\nlet domainFromEmail = '';\nif (email.includes('@')) {\n    domainFromEmail = email.split('@')[1];\n}\n\n// Plan A: Dominio de la URL (Limpieza Manual)\nlet domainFromUrl = '';\nif (rawUrl && rawUrl.length > 3) {\n    // 1. Quitar el protocolo (http:// o https://)\n    let temp = rawUrl.replace('https://', '').replace('http://', '');\n    \n    // 2. Quitar el www.\n    temp = temp.replace('www.', '');\n    \n    // 3. Cortar todo lo que venga después de la primera barra /\n    // Ej: empresa.com/contacto -> empresa.com\n    temp = temp.split('/')[0];\n    \n    // 4. Cortar parámetros raros (por si acaso)\n    temp = temp.split('?')[0];\n    \n    domainFromUrl = temp.trim();\n}\n\n// DECISIÓN FINAL:\n// Si logramos sacar algo de la URL, esa es la que manda. Si no, usamos el email.\nlet finalDomain = (domainFromUrl.length > 0) ? domainFromUrl : domainFromEmail;\n\n\n// --- 2. VALIDACIÓN ---\n\nlet proceed = true;\nlet reason = \"Valid lead\";\nlet researchDepth = \"deep\";\n\n// Chequeo Competidores\nif (competitors.some(c => finalDomain.includes(c))) {\n    proceed = false;\n    reason = \"Competitor detected\";\n}\n\n// Chequeo Calidad (Si es email genérico y no había URL válida)\nif (genericProviders.includes(domainFromEmail) && domainFromUrl === '') {\n    researchDepth = \"shallow\";\n    reason = \"Limited data: Generic email and no URL\";\n}\n\n// --- 3. SALIDA ---\n\nreturn {\n    clean_data: {\n        name: inputData.name,\n        email: email,\n        role: role,\n        domain: finalDomain, // <--- Aquí debe salir tu URL limpia\n        research_depth: researchDepth\n    },\n    proceed: proceed,\n    metadata: {\n        rejection_reason: proceed ? null : reason,\n        data_quality: researchDepth === \"deep\" ? \"high\" : \"medium\",\n        // Debug para que veas qué pasó\n        _debug_logic: domainFromUrl ? \"Usó URL Manual\" : \"Usó Fallback Email\"\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -192
+      ],
+      "id": "8cd2eaa9-85dc-44ee-91f1-5dbb06170eb8",
+      "name": "Guaardrail:Data Cleaning"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dcf53ee3-1dd1-48f2-9cfc-fbe97656e139",
+              "leftValue": "={{ $json.proceed }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -48,
+        -192
+      ],
+      "id": "e30e641e-4b8b-41ac-93b0-83b7604987f9",
+      "name": "Filter: Is Valid?"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un experto en Ventas B2B. Analiza el cargo: {{ $json.clean_data.role }}\n\nGenera un objeto JSON con 3 preguntas de cualificación (Sí/No).\nNO escribas introducciones ni texto extra. SOLO el JSON.\n\nEstructura obligatoria:\n{\n  \"questions\": [\n    \"Pregunta 1\",\n    \"Pregunta 2\",\n    \"Pregunta 3\"\n  ]\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        176,
+        -192
+      ],
+      "id": "9bbb61d9-e320-4439-a9bf-40b0c59f7c48",
+      "name": "Agent Planner"
+    },
+    {
+      "parameters": {
+        "url": "=https://{{ $('Guaardrail:Data Cleaning').first().json.clean_data.domain }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        528,
+        -192
+      ],
+      "id": "916b323c-877d-40cd-ae4f-b96cb2917fab",
+      "name": "Web Scraper",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1577f232-214f-442c-b464-f71fdfa0ad87",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        752,
+        -192
+      ],
+      "id": "bc5f21b6-4165-462a-a517-46eee75e394d",
+      "name": "Check: Scrape Success?"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "page_text",
+              "cssSelector": "body"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        976,
+        -288
+      ],
+      "id": "4297e162-1c86-43ca-b546-cc8ea65f27be",
+      "name": "HTML Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "// SIMULACIÓN DE GOOGLE SEARCH\n// Ejecuta esto solo si el Scraper falla.\n\nconst inputData = $input.first().json;\nlet domain = \"empresa-desconocida.com\";\n\n// ESTRATEGIA 1: Intentar leer el nodo original (Ideal)\ntry {\n  const sourceNode = $('Code in JavaScript').first();\n  if (sourceNode && sourceNode.json.clean_data) {\n    domain = sourceNode.json.clean_data.domain;\n  }\n} catch (e) {\n  // Si falla la referencia (común en pruebas), pasamos a la Estrategia 2\n}\n\n// ESTRATEGIA 2: Leer el dominio del error de entrada (Plan de Respaldo)\n// El error suele decir: \"getaddrinfo ENOTFOUND empresa-fantasma-1234.com\"\nif (domain === \"empresa-desconocida.com\" || domain === \"empresa-fallback\") {\n  if (inputData.error && inputData.error.message) {\n     const match = inputData.error.message.match(/ENOTFOUND\\s+([\\w.-]+)/);\n     if (match && match[1]) {\n       domain = match[1];\n     }\n  }\n}\n\nreturn {\n  json: {\n    title: `${domain} - Tech Company Info (Simulado)`,\n    snippet: `Información de respaldo obtenida via Fallback: ${domain} es una empresa tecnológica simulada para pruebas de resiliencia. Se especializan en software y APIs. (Datos generados por recuperación de errores).`,\n    link: `https://www.google.com/search?q=${domain}`,\n    source_type: \"fallback_simulation\",\n    debug_method: domain.includes('fantasma') ? \"Recuperado del Error\" : \"Recuperado del Nodo\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        -96
+      ],
+      "id": "38eaf323-87b7-4224-b98f-a322ac86756a",
+      "name": "Fallback: Google Search"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nlet finalText = \"\";\nlet source = \"\";\n\n// CASO A: Éxito (Viene texto de la web)\nif (inputData.page_text) {\n  finalText = inputData.page_text;\n  source = \"WEB DIRECTA (Scraper)\";\n} \n// CASO B: Fallo (Viene del Mock de Google)\nelse if (inputData.snippet) {\n  // OJO AQUÍ: Usamos comillas invertidas (backticks) ` `\n  finalText = `TÍTULO: ${inputData.title}\\nRESUMEN: ${inputData.snippet}`;\n  source = \"FALLBACK (Simulación Google)\";\n} \n// CASO C: Desastre total\nelse {\n  finalText = \"No se pudo obtener información.\";\n  source = \"VACÍO\";\n}\n\nreturn {\n  json: {\n    final_text: finalText,\n    data_source: source,\n    questions: $('Agent Planner').first().json.questions \n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -192
+      ],
+      "id": "310a4a82-5569-4888-9b3c-496c5b9c9910",
+      "name": "Context Normalizer"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un Analista Senior B2B.\n\nTus instrucciones:\n1. Lee el contenido extraído (puede venir de la web oficial o de una búsqueda de respaldo).\n2. Responde las \"Preguntas de Cualificación\" usando SOLO evidencia del texto.\n3. Decide si es un buen lead.\n\n---\nCONTENIDO WEB / FUENTE:\n{{ $('Agent Planner').item.json.text }}\n\nPREGUNTAS A RESPONDER:\n{{ $('Agent Planner').first().json.text }}\n---\n\nFormato de Respuesta (JSON):\n{\n  \"analisis\": \"Breve resumen de lo que hace la empresa...\",\n  \"respuestas\": [\n    {\"pregunta\": \"...\", \"respuesta\": \"SI/NO/NO CLARO\", \"evidencia\": \"...\"}\n  ],\n  \"score\": (0-100),\n  \"decision\": \"Sales Call / Nurture / Discard\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1424,
+        -192
+      ],
+      "id": "a45538ee-943f-472c-a293-22604cd6d76c",
+      "name": "The Analyst (Scoring)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos la respuesta del LLM (asegúrate que el campo se llame 'text' o 'output')\nconst llmOutput = $input.first().json.text; \n\n// 2. Usamos una expresión regular para buscar lo que está entre ```json y ```\n// Si el modelo no puso los bloques de código, intentamos parsear todo el texto.\nlet jsonString = llmOutput;\nconst jsonMatch = llmOutput.match(/```json\\n([\\s\\S]*?)\\n```/);\n\nif (jsonMatch) {\n  jsonString = jsonMatch[1];\n}\n\n// 3. Convertimos el texto a Objeto real y lo devolvemos\ntry {\n  const parsedData = JSON.parse(jsonString);\n  return parsedData;\n} catch (e) {\n  // Si falla, devolvemos un error controlado\n  return { error: \"No se pudo parsear el JSON\", raw_output: llmOutput };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        -192
+      ],
+      "id": "cbe64dc3-c669-4f71-8ff3-0f65391e8c39",
+      "name": "JSON Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": "=70",
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "id": "3af61c5d-d110-4413-80e1-92fdd63232e1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hot Lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c1e384a8-1cae-4198-b7a5-30434d181925",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": "=40",
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Warm Lead"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e2ddebdf-f8b3-4610-8977-ceca8f7c9d86",
+                    "leftValue": "= {{ $json.score }}",
+                    "rightValue": 40,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Discard"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2032,
+        -208
+      ],
+      "id": "b6fd0af6-f6a8-45a7-ac12-b648a23c049d",
+      "name": "Router: Lead Score"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VnclIRDsYpUWjaiQb-zGByK-UEbXOHDLAx2mY1yULVs",
+          "mode": "list",
+          "cachedResultName": "Leads_IA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VnclIRDsYpUWjaiQb-zGByK-UEbXOHDLAx2mY1yULVs/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VnclIRDsYpUWjaiQb-zGByK-UEbXOHDLAx2mY1yULVs/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now }}",
+            "Empresa": "={{ $('Guaardrail:Data Cleaning').item.json.clean_data.domain }}",
+            "Email": "={{ $('Guaardrail:Data Cleaning').item.json.clean_data.email }}",
+            "Score": "={{ $('JSON Parser').item.json.score }}",
+            "Decision": "={{ $('JSON Parser').item.json.decision }}",
+            "Analisis": "={{ $('JSON Parser').item.json.analisis }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Empresa",
+              "displayName": "Empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Decision",
+              "displayName": "Decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Analisis",
+              "displayName": "Analisis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2480,
+        -304
+      ],
+      "id": "59e88cb4-7be8-4dc6-86c9-edfc2df6e6cf",
+      "name": "DB: Hot Leads",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "60b2CAYQZxfQPFls",
+          "name": Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "TU_ID_DE_GOOGLE_SHEETS",
+          "mode": "list",
+          "cachedResultName": "Leads_IA",
+          "cachedResultUrl": "cachedResultUrl""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1798491582,
+          "mode": "list",
+          "cachedResultName": "Discard",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VnclIRDsYpUWjaiQb-zGByK-UEbXOHDLAx2mY1yULVs/edit#gid=1798491582"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now }}",
+            "Empresa": "={{ $('Guaardrail:Data Cleaning').item.json.clean_data.domain }}",
+            "Email": "={{ $('Guaardrail:Data Cleaning').item.json.clean_data.email }}",
+            "Score": "={{ $json.score }}",
+            "Decision": "={{ $('JSON Parser').item.json.decision }}",
+            "Analisis": "={{ $('JSON Parser').item.json.analisis }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Empresa",
+              "displayName": "Empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Decision",
+              "displayName": "Decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Analisis",
+              "displayName": "Analisis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2432,
+        48
+      ],
+      "id": "8b186057-2ac9-4a27-9410-d9fa1d7e23e3",
+      "name": "DB: Nurture/Discard",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "60b2CAYQZxfQPFls",
+          "name": "luiseliasvillegasortiz@gmail.com"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Mock Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent Planner",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "The Analyst (Scoring)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Guaardrail:Data Cleaning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guaardrail:Data Cleaning": {
+      "main": [
+        [
+          {
+            "node": "Filter: Is Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: Is Valid?": {
+      "main": [
+        [
+          {
+            "node": "Agent Planner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Planner": {
+      "main": [
+        [
+          {
+            "node": "Web Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Scraper": {
+      "main": [
+        [
+          {
+            "node": "Check: Scrape Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Scrape Success?": {
+      "main": [
+        [
+          {
+            "node": "HTML Parser",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback: Google Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML Parser": {
+      "main": [
+        [
+          {
+            "node": "Context Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback: Google Search": {
+      "main": [
+        [
+          {
+            "node": "Context Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context Normalizer": {
+      "main": [
+        [
+          {
+            "node": "The Analyst (Scoring)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The Analyst (Scoring)": {
+      "main": [
+        [
+          {
+            "node": "JSON Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JSON Parser": {
+      "main": [
+        [
+          {
+            "node": "Router: Lead Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router: Lead Score": {
+      "main": [
+        [
+          {
+            "node": "DB: Hot Leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DB: Hot Leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DB: Nurture/Discard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "daa60c70-be9c-4db5-be1d-a6d806b6987a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dd8fc81edb51b38e70abc3ff9ce267d94fb1de38fc04a603c9302c0b0bbfe8b5"
+  },
+  "id": "0gxNdq3Ky-ryNLd2vfJPd",
+  "tags": []
+}
